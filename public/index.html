@@ -93,11 +93,11 @@ function hide(){ov.style.display='none';ov.innerHTML=''}
 const MD=[['survival','🧟','Survival','Classic 300-stage siege in the desert arena.',['🔫 5 upgradable weapons','👹 Boss every 10','☠ Mutations']],
 ['trans','🤖','Transformers','Switch form with T or right-click: 🤖 Robot = heavy damage, 🚗 Car = fast & rams zombies.',['🤖 ⇄ 🚗','💥 Ram attack','🐢 Slow / 🚀 Fast']],
 ['maps','🗺️','Map Rush','The battlefield changes every stage, each with its own twist.',['🏜️ Desert','🌨️ Snow (slippery)','🌋 Lava (burns)','🌲 Forest','🏙️ City']]];
-function menu(){if(window.net)net.stop();scene='menu';duel=null;let h='<h1 class="ttl">🧟 ZOMBIE SIEGE 3D</h1><p class="sub">Choose your controls:</p><div class="dd" style="margin:6px 0">'+['pc','phone'].map(c=>'<button data-t="'+c+'"'+(ctl==c?'':' style="opacity:.5"')+'>'+(c=='pc'?'🖥️ PC — aim with mouse, hold click':'📱 Phone — drag to move, auto-fire')+'</button>').join('')+'</div><div class="mg">';
-for(const[k,ic,t,d,tg]of MD){const sv=load(k);h+='<div class="mc"><div class="mi">'+ic+'</div><b>'+t+'</b><small>'+d+'</small><div class="tg">'+tg.map(a=>'<i>'+a+'</i>').join('')+'</div><button data-m="'+k+'">▶ New Game</button>'+(sv?'<button class="r" data-c="'+k+'">⏩ Continue (Stage '+sv.stage+')</button>':'')+'</div>'}
-h+='<div class="mc du"><div class="mi">⚡🤠</div><b>Quick Draw</b><small>3… 2… 1… then FIRE! Shoot before the CPU does. Firing early = foul. First to 3 wins.</small><div class="dd"><button class="be" data-d="easy">🟢 Easy</button><button class="bh" data-d="hard">🟠 Hard</button><button class="bx" data-d="imp">🔴 Impossible</button></div></div>'+(window.net?net.card():'')+'</div>';
+var mtab='off';function menu(){if(window.net)net.stop();scene='menu';duel=null;let h='<h1 class="ttl">🧟 ZOMBIE SIEGE 3D</h1><div class="dd">'+[['off','🎮 Offline'],['on','🌐 Online']].map(a=>'<button data-tab="'+a[0]+'"'+(mtab==a[0]?'':' style="opacity:.5"')+'>'+a[1]+'</button>').join('')+'</div><p class="sub">Choose your controls:</p><div class="dd" style="margin:6px 0">'+['pc','phone'].map(c=>'<button data-t="'+c+'"'+(ctl==c?'':' style="opacity:.5"')+'>'+(c=='pc'?'🖥️ PC — aim with mouse, hold click':'📱 Phone — drag to move, auto-fire')+'</button>').join('')+'</div><div class="mg">';
+if(mtab=='off')for(const[k,ic,t,d,tg]of MD){const sv=load(k);h+='<div class="mc"><div class="mi">'+ic+'</div><b>'+t+'</b><small>'+d+'</small><div class="tg">'+tg.map(a=>'<i>'+a+'</i>').join('')+'</div><button data-m="'+k+'">▶ New Game</button>'+(sv?'<button class="r" data-c="'+k+'">⏩ Continue (Stage '+sv.stage+')</button>':'')+'</div>'}
+h+=mtab=='on'?(window.net?net.card():''):'<div class="mc du"><div class="mi">⚡🤠</div><b>Quick Draw</b><small>3… 2… 1… then FIRE! Shoot before the CPU does. Firing early = foul. First to 3 wins.</small><div class="dd"><button class="be" data-d="easy">🟢 Easy</button><button class="bh" data-d="hard">🟠 Hard</button><button class="bx" data-d="imp">🔴 Impossible</button></div></div>';h+='</div>';
 show(h);
-ov.querySelectorAll('button').forEach(bt=>bt.onclick=()=>{const D=bt.dataset;if(D.o)return net.go(D.o);if(D.t){setCtl(D.t);return menu()}if(D.d)return duelStart(D.d);const k=D.m||D.c,sv=D.c?load(k):null;mode=k;wp=sv&&sv.wp?sv.wp:newWp();
+ov.querySelectorAll('button').forEach(bt=>bt.onclick=()=>{const D=bt.dataset;if(D.tab){mtab=D.tab;return menu()}if(D.o)return net.go(D.o);if(D.t){setCtl(D.t);return menu()}if(D.d)return duelStart(D.d);const k=D.m||D.c,sv=D.c?load(k):null;mode=k;wp=sv&&sv.wp?sv.wp:newWp();
 if(sv){stage=sv.stage;coins=sv.coins;up=Object.assign(newUp(),sv.up);score=0;p={x:W/2,y:H/2,hp:maxHp()}}else{stage=1;coins=0;score=0;up=newUp();p={x:W/2,y:H/2,hp:100}}begin()})}
 function begin(){z=[];b=[];pk=[];e=[];fx=[];killed=0;spawned=0;spawnT=1;stageT=0;fireT=0;hitT=0;
 total=10+Math.min(80,stage)+(stage%10==0?1:0);p.x=W/2;p.y=H/2;p.hp=Math.min(maxHp(),p.hp+maxHp()*.3);p.cd1=p.cd2=p.dsh=0;p.form=0;p.tc=0;p.ivx=p.ivy=0;setMap(mode=='maps'?(stage*7+3)%5:0);pm.scale.setScalar(mode=='trans'?1.6:1.15);tint(mode=='trans');$('btf').style.display=mode=='trans'?'':'none';
@@ -357,7 +357,7 @@ var net=(function(){
 const SRV=location.protocol=='file:'?'http://localhost:3000':'';
 const esc=s=>String(s).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
 const A=a=>({x:a[0],y:a[1],a:a[2],hp:a[3],mv:a[4]});
-let so=null,nick='',tok='',fg=null,iv=0,T0=null,T1=null,op=null,tpf=0,lt=0,of=0;
+let fw=null,so=null,nick='',tok='',fg=null,iv=0,T0=null,T1=null,op=null,tpf=0,lt=0,of=0;
 try{nick=localStorage.getItem('znick')||'';tok=localStorage.getItem('ztok')||'';if(tok.length<8){tok=Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2);localStorage.setItem('ztok',tok)}}catch(e){}
 if(tok.length<8)tok=Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2);
 const msg=t=>{scene='menu';show('<h2>'+t+'</h2><button id="mn">Back</button>');$('mn').onclick=menu};
@@ -368,7 +368,10 @@ function lb(){so.timeout(5000).emit('lb',(er,r)=>{if(er)return msg('Server not r
 function startFight(d){mode='fight';scene='fight';duel=null;paused=false;hide();z=[];pk=[];e=[];fx=[];b.length=0;setMap(0);
   fg={names:d.names,rd:0,sc:[0,0],st:'count',t:0,msg:'',win:0};
   p={x:400,y:250,a:0,hp:100,mv:0,inv:0,cd1:0,cd2:0,form:0};op={x:400,y:250,a:0,hp:100};T0=T1=null;
-  h2.scale.setScalar(1.15);h2.rotation.set(0,0,0);lt=0;clearInterval(iv);iv=setInterval(sendIn,50)}
+  h2.scale.setScalar(1.15);h2.rotation.set(0,0,0);lt=0;
+  if(fw)S.remove(fw);fw=new THREE.Group();const wm=new THREE.MeshLambertMaterial({color:0x8a8f99,flatShading:true}),rm=new THREE.MeshLambertMaterial({color:0x5b4a44,flatShading:true});
+  (d.walls||[]).forEach(([a,c,w,h])=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,38,h),wm);m.position.set(a+w/2-W/2,19,c+h/2-H/2);fw.add(m);
+   const r=new THREE.Mesh(new THREE.BoxGeometry(w+6,5,h+6),rm);r.position.set(a+w/2-W/2,40,c+h/2-H/2);fw.add(r)});S.add(fw);clearInterval(iv);iv=setInterval(sendIn,50)}
 function sendIn(){if(!fg||!so||fg.over)return;
   const vx=(keys.d||keys.ArrowRight?1:0)-(keys.a||keys.ArrowLeft?1:0)+joy.x,vy=(keys.s||keys.ArrowDown?1:0)-(keys.w||keys.ArrowUp?1:0)+joy.y;
   let a,f;if(aim.mouse){aim.upd();a=Math.atan2(aim.gy-p.y,aim.gx-p.x);f=aim.down}else{a=Math.atan2(op.y-p.y,op.x-p.x);f=1}
@@ -395,8 +398,8 @@ function bind(){
   so.on('fg:end',d=>{fg.over=1;clearInterval(iv);show('<h2>'+(d.win?'You lost 😞':'You won the fight! 🏆')+'</h2><p>'+d.sc[0]+' : '+d.sc[1]+'</p><p>🪙 +'+d.g+' online coins (total '+d.c+')</p><button id="mn" class="r">Menu</button>');$('mn').onclick=menu});
 }
 return{
- card(){return '<div class="mc du"><div class="mi">🌐</div><b>Online</b><small>Real players: Quick Draw (first to 3), 1v1 Fight (best of 5) and the richest-players board. Online wins earn online coins.</small><input id="nk" maxlength="14" placeholder="Your name" value="'+esc(nick)+'" style="padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);text-align:center;width:90%;margin:4px 0"><div class="dd"><button data-o="qd">⚡ Quick Draw</button><button data-o="fg">⚔️ 1v1 Fight</button></div><button class="r" data-o="lb">🏆 Richest players</button></div>'},
- go(k){const i=$('nk');if(i&&i.value.trim())nick=i.value.trim().slice(0,14);
+ card(){return '<div class="mc du"><div class="mi">🌐</div><b>Online</b><small>Real players: Quick Draw (first to 3), 1v1 Fight (best of 5) and the richest-players board. Online wins earn online coins.</small><input id="nk" maxlength="14" placeholder="Your name" value="'+esc(nick)+'" style="padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);text-align:center;width:90%;margin:4px 0"><div class="dd"><button data-o="qd">⚡ Quick Draw</button><button data-o="fg">⚔️ 1v1 Fight</button></div><button class="r" data-o="lb">🏆 Richest players</button><small style="opacity:.7;margin-top:6px">Coming soon: co-op zombies • castle defense 2v2 • shop &amp; skins</small></div>'},
+ go(k){mtab='on';const i=$('nk');if(i&&i.value.trim())nick=i.value.trim().slice(0,14);
   conn(()=>{if(k=='lb')return lb();if(nick.length<2)return msg('Enter a name (2+ letters)');
    so.timeout(5000).emit('reg',nick,tok,(er,r)=>{if(er)return msg('Server not responding');if(r.e)return msg(esc(r.e));
     try{localStorage.setItem('znick',nick)}catch(e){}
@@ -404,7 +407,7 @@ return{
     so.emit('q',k);$('cx').onclick=()=>{so.emit('cancel');menu()}})})},
  qf(){if(!duel||!duel.net||duel.fired||duel.s=='res'||duel.s=='end')return;duel.fired=1;so.emit('qd:fire')},
  stop(){clearInterval(iv);if(so&&(fg||(duel&&duel.net)||scene=='wait'))so.emit('cancel');
-  if(fg){fg=null;h2.scale.setScalar(1.8);h2.rotation.set(0,Math.PI,0);h2.position.set(110,0,0)}},
+  if(fw){S.remove(fw);fw=null}if(fg){fg=null;h2.scale.setScalar(1.8);h2.rotation.set(0,Math.PI,0);h2.position.set(110,0,0)}},
  draw(){const T=performance.now()/1000,dt=Math.min(.05,T-lt||.016);lt=T;if(!fg||!T0)return;
   fg.t+=dt;hitT=Math.max(0,hitT-dt);shake=Math.max(0,shake-dt);of-=dt;
   const k=Math.min(1,dt*14);p.x+=(T0.x-p.x)*k;p.y+=(T0.y-p.y)*k;op.x+=(T1.x-op.x)*k;op.y+=(T1.y-op.y)*k;op.a=T1.a;p.mv=T0.mv;
