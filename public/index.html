@@ -48,6 +48,32 @@ p{margin:4px 0;font-size:.9rem}
 .tg{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin:2px 0}.tg i{font-style:normal;font-size:.68rem;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:1px 7px}
 .mc button{width:100%;margin:2px 0}.dd{display:flex;gap:6px;width:100%}.dd button{flex:1;margin:2px 0}
 .be{background:#2f9e62}.bh{background:#e08a1e;color:#fff}.bx{background:#c0392b;color:#fff}
+
+.lobby{position:relative;flex:1;min-width:0;align-self:stretch;container-type:size;color:#eaf3f7;font-family:Impact,"Arial Narrow Bold",system-ui,sans-serif;text-align:left;overflow:hidden;user-select:none;background:linear-gradient(90deg,rgba(7,17,26,.88),rgba(7,17,26,0) 30%,rgba(7,17,26,0) 56%,rgba(7,17,26,.9)),linear-gradient(0deg,rgba(7,17,26,.8),rgba(7,17,26,0) 28%)}
+.lobby button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;border-radius:0;cursor:pointer}
+.lobby button:focus-visible,.lobby input:focus-visible{outline:2px solid #ffd23a;outline-offset:2px}
+.lobby .lb-top{position:absolute;left:2cqw;right:2cqw;top:1.6cqw;display:flex;justify-content:space-between;align-items:center;gap:1cqw}
+.lobby .lb-logo{font-size:max(4.2cqw,18px);font-style:italic;letter-spacing:.1cqw;color:#fff;text-shadow:.3cqw .3cqw 0 #ff7a1a}
+.lobby .lb-chips{display:flex;gap:.8cqw;flex-wrap:wrap;justify-content:flex-end}
+.lobby .chip{padding:.7cqw 1.6cqw;font-size:max(2cqw,11px);background:rgba(14,26,36,.82);border:.2cqw solid #2c4a5e;border-radius:.6cqw;color:#9fb8c6;transform:skewX(-8deg)}
+.lobby .chip.on{background:#ff7a1a;border-color:#ffd23a;color:#10202c}
+.lobby .lb-name{width:max(18cqw,110px);padding:.6cqw 1.2cqw;font:inherit;font-size:max(2cqw,12px);background:rgba(14,26,36,.85);border:.2cqw solid #ffd23a;border-radius:.6cqw;color:#fff;text-align:center}
+.lobby .lb-left{position:absolute;left:2cqw;top:14cqw;display:flex;flex-direction:column;gap:1.2cqw}
+.lobby .ibt{width:max(8cqw,46px);height:max(8cqw,46px);border-radius:1cqw;background:rgba(14,26,36,.85);border:.25cqw solid #2c4a5e;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:max(3.4cqw,20px)}
+.lobby .ibt small{font-size:max(1.5cqw,9px);color:#9fb8c6;font-family:system-ui,sans-serif;font-style:normal}
+.lobby .lb-right{position:absolute;right:2cqw;top:9cqw;bottom:2cqw;width:max(34cqw,170px);display:flex;flex-direction:column;gap:1cqw;overflow:auto}
+.lobby .mode{display:flex;align-items:center;gap:1.2cqw;padding:1.1cqw 1.8cqw;background:rgba(14,26,36,.85);border-left:.8cqw solid #2c4a5e;font-size:max(2.6cqw,13px);transform:skewX(-6deg)}
+.lobby .mode.on{background:linear-gradient(90deg,#ff7a1a,#ffb02e);border-left-color:#ffd23a;color:#10202c}
+.lobby .mode.off{opacity:.45;cursor:default}
+.lobby .mode i{font-style:normal;font-size:max(3cqw,15px)}
+.lobby .mode em{font-style:normal;margin-left:auto;font-size:max(1.5cqw,10px);font-family:system-ui,sans-serif}
+.lobby .lb-info{font-family:system-ui,sans-serif;font-style:normal;font-size:max(1.7cqw,11px);color:#b9ccd6;line-height:1.35;margin-top:auto}
+.lobby .lb-sub{display:flex;gap:.8cqw;flex-wrap:wrap}
+.lobby .lb-cont{padding:1cqw 2cqw;font-size:max(2.2cqw,12px);background:rgba(14,26,36,.85);border:.25cqw solid #ffd23a;color:#ffd23a;transform:skewX(-8deg);text-align:center}
+.lobby .lb-go{padding:1.2cqw 0;text-align:center;font-size:max(6cqw,24px);font-style:italic;letter-spacing:.3cqw;color:#10202c;background:linear-gradient(180deg,#ffe14d,#ff9a1f);border-bottom:.6cqw solid #c25a00;transform:skewX(-8deg);border-radius:.8cqw;box-shadow:0 0 3cqw rgba(255,150,30,.45)}
+.lobby .lb-go:active{transform:skewX(-8deg) translateY(.3cqw)}
+@media (prefers-reduced-motion:no-preference){.lobby .lb-go{animation:lbp 2.4s ease-in-out infinite}}
+@keyframes lbp{50%{box-shadow:0 0 4.5cqw rgba(255,150,30,.85)}}
 </style>
 </head>
 <body>
@@ -88,16 +114,24 @@ const sk=m=>'zsiege2'+(m=='survival'?'':m);
 function save(){try{localStorage.setItem(sk(mode),JSON.stringify({stage,coins,up,wp}))}catch(e){}}
 function load(m){try{return JSON.parse(localStorage.getItem(sk(m||mode)))}catch(e){return null}}
 const maxHp=()=>100+up.hp*25,cost=k=>20+up[k]*up[k]*5+up[k]*20,dmgP=()=>10*(1+up.dmg*.35);
-function show(html){ov.style.display='flex';ov.innerHTML='<div class="box">'+html+'</div>'}
+function show(html){ov.style.display='flex';ov.style.background='';ov.style.padding='';ov.innerHTML='<div class="box">'+html+'</div>'}
 function hide(){ov.style.display='none';ov.innerHTML=''}
 const MD=[['survival','🧟','Survival','Classic 300-stage siege in the desert arena.',['🔫 5 upgradable weapons','👹 Boss every 10','☠ Mutations']],
 ['trans','🤖','Transformers','Switch form with T or right-click: 🤖 Robot = heavy damage, 🚗 Car = fast & rams zombies.',['🤖 ⇄ 🚗','💥 Ram attack','🐢 Slow / 🚀 Fast']],
 ['maps','🗺️','Map Rush','The battlefield changes every stage, each with its own twist.',['🏜️ Desert','🌨️ Snow (slippery)','🌋 Lava (burns)','🌲 Forest','🏙️ City']]];
-var mtab='off';function menu(){if(window.net)net.stop();scene='menu';duel=null;let h='<h1 class="ttl">🧟 ZOMBIE SIEGE 3D</h1><div class="dd">'+[['off','🎮 Offline'],['on','🌐 Online']].map(a=>'<button data-tab="'+a[0]+'"'+(mtab==a[0]?'':' style="opacity:.5"')+'>'+a[1]+'</button>').join('')+'</div><p class="sub">Choose your controls:</p><div class="dd" style="margin:6px 0">'+['pc','phone'].map(c=>'<button data-t="'+c+'"'+(ctl==c?'':' style="opacity:.5"')+'>'+(c=='pc'?'🖥️ PC — aim with mouse, hold click':'📱 Phone — drag to move, auto-fire')+'</button>').join('')+'</div><div class="mg">';
-if(mtab=='off')for(const[k,ic,t,d,tg]of MD){const sv=load(k);h+='<div class="mc"><div class="mi">'+ic+'</div><b>'+t+'</b><small>'+d+'</small><div class="tg">'+tg.map(a=>'<i>'+a+'</i>').join('')+'</div><button data-m="'+k+'">▶ New Game</button>'+(sv?'<button class="r" data-c="'+k+'">⏩ Continue (Stage '+sv.stage+')</button>':'')+'</div>'}
-h+=mtab=='on'?(window.net?net.card():''):'<div class="mc du"><div class="mi">⚡🤠</div><b>Quick Draw</b><small>3… 2… 1… then FIRE! Shoot before the CPU does. Firing early = foul. First to 3 wins.</small><div class="dd"><button class="be" data-d="easy">🟢 Easy</button><button class="bh" data-d="hard">🟠 Hard</button><button class="bx" data-d="imp">🔴 Impossible</button></div></div>';h+='</div>';
-show(h);
-ov.querySelectorAll('button').forEach(bt=>bt.onclick=()=>{const D=bt.dataset;if(D.tab){mtab=D.tab;return menu()}if(D.o)return net.go(D.o);if(D.t){setCtl(D.t);return menu()}if(D.d)return duelStart(D.d);const k=D.m||D.c,sv=D.c?load(k):null;mode=k;wp=sv&&sv.wp?sv.wp:newWp();
+var mtab='off',msel='survival',msel2='easy';function menu(){if(window.net)net.stop();scene='menu';duel=null;tint(false);z=[];b=[];e=[];pk=[];fx=[];setMap(0);
+const ON=mtab=='on',esc2=t=>String(t).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
+const L=ON?[['qd','⚡','Quick Draw'],['fg','⚔️','1v1 Fight'],['x1','🧟','Co-op Zombies'],['x2','🏰','Castle 2v2']]:[['survival','🧟','Survival'],['trans','🤖','Transformers'],['maps','🗺️','Map Rush'],['duel','⚡','Quick Draw']];
+if(!L.some(a=>a[0]==msel&&!/^x/.test(a[0])))msel=L[0][0];
+const md=MD.find(a=>a[0]==msel),sv=md?load(msel):null,INFO={duel:'Beat the CPU to the draw. First to 3 rounds.',qd:'Live duel: the server sends FIRE, the fastest finger wins. First to 3.',fg:'1v1 in a walled arena. Best of 5 rounds. Win online coins.'};
+const go=ON?'data-o="'+msel+'"':msel=='duel'?'data-d="'+msel2+'"':'data-m="'+msel+'"';
+let h='<div class="lb-top"><div class="lb-logo">ZOMBIE SIEGE</div>'+(ON?'<input id="nk" class="lb-name" maxlength="14" placeholder="Your name" value="'+esc2(window.net?net.nick():'')+'">':'')+'<div class="lb-chips">'+[['off','🎮 Offline'],['on','🌐 Online']].map(a=>'<button class="chip'+(mtab==a[0]?' on':'')+'" data-tab="'+a[0]+'">'+a[1]+'</button>').join('')+['pc','phone'].map(c=>'<button class="chip'+(ctl==c?' on':'')+'" data-t="'+c+'">'+(c=='pc'?'🖥️ PC':'📱 Phone')+'</button>').join('')+'</div></div>';
+if(ON)h+='<div class="lb-left"><button class="ibt" data-o="shop">🛒<small>Shop</small></button><button class="ibt" data-o="lb">🏆<small>Richest</small></button></div>';
+h+='<div class="lb-right">'+L.map(a=>{const d=/^x/.test(a[0]);return '<button class="mode'+(a[0]==msel?' on':'')+(d?' off':'')+'" '+(d?'disabled':'data-s="'+a[0]+'"')+'><i>'+a[1]+'</i>'+a[2]+(d?'<em>soon</em>':'')+'</button>'}).join('')+'<div class="lb-info">'+(md?md[3]:INFO[msel])+'</div>'
++(!ON&&msel=='duel'?'<div class="lb-sub">'+[['easy','🟢 Easy'],['hard','🟠 Hard'],['imp','🔴 Impossible']].map(a=>'<button class="chip'+(msel2==a[0]?' on':'')+'" data-df="'+a[0]+'">'+a[1]+'</button>').join('')+'</div>':'')
++(sv?'<button class="lb-cont" data-c="'+msel+'">⏩ Continue (Stage '+sv.stage+')</button>':'')+'<button class="lb-go" '+go+'>START</button></div>';
+show(h);ov.firstChild.className='lobby';ov.style.background='none';ov.style.padding='0';
+ov.querySelectorAll('button').forEach(bt=>bt.onclick=()=>{const D=bt.dataset;if(D.tab){mtab=D.tab;return menu()}if(D.s){msel=D.s;return menu()}if(D.df){msel2=D.df;return menu()}if(D.o)return net.go(D.o);if(D.t){setCtl(D.t);return menu()}if(D.d)return duelStart(D.d);const k=D.m||D.c,sv=D.c?load(k):null;mode=k;wp=sv&&sv.wp?sv.wp:newWp();
 if(sv){stage=sv.stage;coins=sv.coins;up=Object.assign(newUp(),sv.up);score=0;p={x:W/2,y:H/2,hp:maxHp()}}else{stage=1;coins=0;score=0;up=newUp();p={x:W/2,y:H/2,hp:100}}begin()})}
 function begin(){z=[];b=[];pk=[];e=[];fx=[];killed=0;spawned=0;spawnT=1;stageT=0;fireT=0;hitT=0;
 total=10+Math.min(80,stage)+(stage%10==0?1:0);p.x=W/2;p.y=H/2;p.hp=Math.min(maxHp(),p.hp+maxHp()*.3);p.cd1=p.cd2=p.dsh=0;p.form=0;p.tc=0;p.ivx=p.ivy=0;setMap(mode=='maps'?(stage*7+3)%5:0);pm.scale.setScalar(mode=='trans'?1.6:1.15);tint(mode=='trans');$('btf').style.display=mode=='trans'?'':'none';
@@ -309,9 +343,9 @@ function R3(T){const dt=paused?0:Math.min(.05,T-lastT);lastT=T;const dl=scene=='
 tcol.set(mode=='maps'||dl?MAPS[mi].sky:SKY[tier(stage)]);S.background.lerp(tcol,.03);S.fog.color.copy(S.background);
 const px=pp.x-W/2,pz=pp.y-H/2,k=Math.min(1,dt*5),sh=shake>0?8:0,j=()=>(Math.random()-.5)*sh;
 cp.x+=(Math.max(-240,Math.min(240,px))-cp.x)*k;cp.z+=(Math.max(-130,Math.min(130,pz))-cp.z)*k;
-if(dl){cam.position.set(0,62,250);cam.lookAt(0,34,0)}else if(mv){const a=T*.12;cam.position.set(Math.cos(a)*520,250,Math.sin(a)*520);cam.lookAt(0,10,0)}else{cam.position.set(cp.x+j(),380+j(),cp.z+290+j());cam.lookAt(cp.x,0,cp.z-20)}
+if(dl){cam.position.set(0,62,250);cam.lookAt(0,34,0)}else if(scene=='menu'){cam.position.set(26,34,120);cam.lookAt(26,28,0)}else if(mv){const a=T*.12;cam.position.set(Math.cos(a)*520,250,Math.sin(a)*520);cam.lookAt(0,10,0)}else{cam.position.set(cp.x+j(),380+j(),cp.z+290+j());cam.lookAt(cp.x,0,cp.z-20)}
 sun.position.set(cp.x+260,420,cp.z+160);sun.target.position.set(cp.x,0,cp.z);
-const car=!!(mode=='trans'&&p&&p.form);pm.visible=!mv&&!car;carG.visible=!mv&&car;h1.visible=dl;h2.visible=dl||scene=='fight';if(!mv){carG.position.set(px,0,pz);carG.rotation.y=-(p.a||0);pm.position.set(px,0,pz);pm.rotation.y=-(p.a||0);pose(pm,p.mv?Math.sin(T*12):0,hitT>.4);for(const[,m]of pm.userData.pt){m.transparent=true;m.opacity=p.inv?.45:1}}
+const car=!!(mode=='trans'&&p&&p.form);pm.visible=(!mv||scene=='menu')&&!car;carG.visible=!mv&&car;h1.visible=dl;h2.visible=dl||scene=='fight';if(scene=='menu'){pm.position.set(0,0,0);pm.scale.setScalar(1.15);pm.rotation.y=-1.3+Math.sin(T*.6)*.22;pose(pm,0,false);for(const[,m]of pm.userData.pt){m.transparent=false;m.opacity=1}}if(!mv){carG.position.set(px,0,pz);carG.rotation.y=-(p.a||0);pm.position.set(px,0,pz);pm.rotation.y=-(p.a||0);pose(pm,p.mv?Math.sin(T*12):0,hitT>.4);for(const[,m]of pm.userData.pt){m.transparent=true;m.opacity=p.inv?.45:1}}
 if(fireT>lfT+.01)mf.intensity=2.4;lfT=fireT;mf.intensity*=.8;const pa=pp.a||0;mf.position.set(px+Math.cos(pa)*30,28,pz+Math.sin(pa)*30);
 flames.forEach((f,i)=>f.scale.setScalar(6+Math.sin(T*9+i*2)*1.3));
 sync(z,zs,makeZ,(q,w)=>{const u=w.userData;w.position.set(q.x-W/2,0,q.y-H/2);u.b.rotation.y=-Math.atan2(pp.y-q.y,pp.x-q.x);pose(u.b,Math.sin(T*(q.sp>90?11:6)+q.x*.05),q.fl>0,Math.sin(T*3+q.y*.1)*2.5);
@@ -376,6 +410,14 @@ function sendIn(){if(!fg||!so||fg.over)return;
   const vx=(keys.d||keys.ArrowRight?1:0)-(keys.a||keys.ArrowLeft?1:0)+joy.x,vy=(keys.s||keys.ArrowDown?1:0)-(keys.w||keys.ArrowUp?1:0)+joy.y;
   let a,f;if(aim.mouse){aim.upd();a=Math.atan2(aim.gy-p.y,aim.gx-p.x);f=aim.down}else{a=Math.atan2(op.y-p.y,op.x-p.x);f=1}
   p.a=a;so.volatile.emit('fg:in',{dx:vx,dy:vy,a:+a.toFixed(2),f:f&&fg.st=='fight'?1:0})}
+function setSkin(g,s){const u=g.userData,pt=u.pt;if(!u.o0)u.o0=[pt[2][1].color.getHex(),pt[0][1].color.getHex()];pt[2][1].color.set(s?s.sh:u.o0[0]);pt[0][1].color.set(s?s.pn:u.o0[1])}
+function shop(){const bad=er=>msg(er?'Server not responding':'Error'),draw=r=>{scene='menu';
+ const row=it=>{const own=r.own.includes(it.id),eq=r.eq[it.t]==it.id;
+  return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin:4px 0;text-align:left"><span>'+(it.sh?'<i style="display:inline-block;width:14px;height:14px;border-radius:50%;background:'+it.sh+';margin-right:6px"></i>':'🔫 ')+esc(it.n)+'</span>'+(eq?'<b>✔ Equipped</b>':own?'<button data-e="'+it.id+'">Equip</button>':'<button data-b="'+it.id+'"'+(r.c>=it.p?'':' disabled')+'>🪙 '+it.p+'</button>')+'</div>'};
+ show('<h2>🛒 Online shop</h2><p>🪙 <b>'+r.c+'</b> online coins</p><div class="gt">Skins</div>'+(r.eq.skin?'<button data-e="skin">Default skin</button>':'')+r.items.filter(i=>i.t=='skin').map(row).join('')+'<div class="gt">Weapons (1v1 fight)</div>'+(r.eq.weapon?'<button data-e="weapon">Default pistol</button>':'')+r.items.filter(i=>i.t=='weapon').map(row).join('')+'<button id="mn">Back</button>');
+ $('mn').onclick=menu;const go=(ev,id)=>so.timeout(5000).emit(ev,id,(er,x)=>er||x.e?msg(er?'Server not responding':esc(x.e)):draw(x));
+ ov.querySelectorAll('button[data-b]').forEach(b=>b.onclick=()=>go('buy',b.dataset.b));ov.querySelectorAll('button[data-e]').forEach(b=>b.onclick=()=>go('eq',b.dataset.e))};
+ so.timeout(5000).emit('shop',(er,x)=>er?bad(er):draw(x))}
 function bind(){
   so.on('pg',cb=>cb());
   so.on('disconnect',()=>{if((fg&&!fg.over)||(duel&&duel.net)||scene=='wait'){net.stop();msg('Connection lost')}});
@@ -388,7 +430,7 @@ function bind(){
     duel.msg=d.foul?duel.names[1-d.win]+' fired too early! FOUL':duel.names[d.win]+' won the draw! '+(d.ms/1000).toFixed(3)+'s';snd(d.win?120:200,.25,'square',.08)});
   so.on('qd:end',d=>{duel.s='end';show('<h2>'+(d.win?'You lost 😞':'You won! 🏆')+'</h2><p>'+d.sc[0]+' : '+d.sc[1]+'</p><p>🪙 +'+d.g+' online coins (total '+d.c+')</p><button id="mn" class="r">Menu</button>');$('mn').onclick=menu});
   // 1v1 Fight
-  so.on('fg:round',d=>{if(!fg||fg.over)startFight(d);fg.rd=d.rd;fg.sc=d.sc;fg.names=d.names;fg.st='count';fg.t=0;tpf=1;b.length=0});
+  so.on('fg:round',d=>{if(!fg||fg.over)startFight(d);if(d.sk){setSkin(pm,d.sk[0]);setSkin(h2,d.sk[1])}fg.rd=d.rd;fg.sc=d.sc;fg.names=d.names;fg.st='count';fg.t=0;tpf=1;b.length=0});
   so.on('fg:s',d=>{if(!fg)return;const m=A(d.p[0]),o=A(d.p[1]);
     if(m.hp<p.hp){hitT=.5;shake=.15;snd(70,.15,'sawtooth',.07)}if(o.hp<op.hp)of=.1;
     p.hp=m.hp;op.hp=o.hp;T0=m;T1=o;if(tpf){tpf=0;p.x=m.x;p.y=m.y;op.x=o.x;op.y=o.y}
@@ -398,12 +440,13 @@ function bind(){
   so.on('fg:end',d=>{fg.over=1;clearInterval(iv);show('<h2>'+(d.win?'You lost 😞':'You won the fight! 🏆')+'</h2><p>'+d.sc[0]+' : '+d.sc[1]+'</p><p>🪙 +'+d.g+' online coins (total '+d.c+')</p><button id="mn" class="r">Menu</button>');$('mn').onclick=menu});
 }
 return{
- card(){return '<div class="mc du"><div class="mi">🌐</div><b>Online</b><small>Real players: Quick Draw (first to 3), 1v1 Fight (best of 5) and the richest-players board. Online wins earn online coins.</small><input id="nk" maxlength="14" placeholder="Your name" value="'+esc(nick)+'" style="padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);text-align:center;width:90%;margin:4px 0"><div class="dd"><button data-o="qd">⚡ Quick Draw</button><button data-o="fg">⚔️ 1v1 Fight</button></div><button class="r" data-o="lb">🏆 Richest players</button><small style="opacity:.7;margin-top:6px">Coming soon: co-op zombies • castle defense 2v2 • shop &amp; skins</small></div>'},
+ nick(){return nick},
+ card(){return '<div class="mc du"><div class="mi">🌐</div><b>Online</b><small>Real players: Quick Draw (first to 3), 1v1 Fight (best of 5) and the richest-players board. Online wins earn online coins.</small><input id="nk" maxlength="14" placeholder="Your name" value="'+esc(nick)+'" style="padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);text-align:center;width:90%;margin:4px 0"><div class="dd"><button data-o="qd">⚡ Quick Draw</button><button data-o="fg">⚔️ 1v1 Fight</button></div><button data-o="shop">🛒 Shop (skins &amp; weapons)</button><button class="r" data-o="lb">🏆 Richest players</button><small style="opacity:.7;margin-top:6px">Coming soon: co-op zombies • castle defense 2v2 • 3-day rare weapon</small></div>'},
  go(k){mtab='on';const i=$('nk');if(i&&i.value.trim())nick=i.value.trim().slice(0,14);
   conn(()=>{if(k=='lb')return lb();if(nick.length<2)return msg('Enter a name (2+ letters)');
    so.timeout(5000).emit('reg',nick,tok,(er,r)=>{if(er)return msg('Server not responding');if(r.e)return msg(esc(r.e));
     try{localStorage.setItem('znick',nick)}catch(e){}
-    scene='wait';show('<h2>🔎 Looking for an opponent…</h2><p>Open the game in a second tab to test it.</p><button class="r" id="cx">Cancel</button>');
+    if(k=='shop')return shop();scene='wait';show('<h2>🔎 Looking for an opponent…</h2><p>Open the game in a second tab to test it.</p><button class="r" id="cx">Cancel</button>');
     so.emit('q',k);$('cx').onclick=()=>{so.emit('cancel');menu()}})})},
  qf(){if(!duel||!duel.net||duel.fired||duel.s=='res'||duel.s=='end')return;duel.fired=1;so.emit('qd:fire')},
  stop(){clearInterval(iv);if(so&&(fg||(duel&&duel.net)||scene=='wait'))so.emit('cancel');
