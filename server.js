@@ -7,6 +7,10 @@ try{db=JSON.parse(fs.readFileSync(DBF))}catch(e){}
 setInterval(()=>{if(dirty){dirty=0;fs.writeFile(DBF,JSON.stringify(db),()=>{})}},5000);
 const W=800,H=500,rnd=(a,b)=>a+Math.random()*(b-a),cl=(v,a,b)=>Math.max(a,Math.min(b,v));
 const q={qd:[],fg:[]};
+const WALLS=[[360,200,80,100],[200,100,60,80],[540,320,60,80],[200,320,60,80],[540,100,60,80]]; // [x,y,w,h] buildings
+const push=p=>{for(const[x,y,w,h]of WALLS){const cx=cl(p.x,x,x+w),cy=cl(p.y,y,y+h);let dx=p.x-cx,dy=p.y-cy,d=Math.hypot(dx,dy);
+  if(d<14){if(d<.001){dx=1;dy=0;d=1}p.x=cx+dx/d*14;p.y=cy+dy/d*14}}};
+const inW=(px,py)=>WALLS.some(([x,y,w,h])=>px>x&&px<x+w&&py>y&&py<y+h);
 const top=()=>Object.entries(db).map(([n,v])=>({n,c:v.c})).sort((a,b)=>b.c-a.c).slice(0,10);
 const pay=(s,c)=>{if(s.nick&&db[s.nick]){db[s.nick].c+=c;dirty=1;return db[s.nick].c}return 0};
 const leave=s=>{for(const k in q)q[k]=q[k].filter(x=>x!==s)};
@@ -71,7 +75,7 @@ function FG(a,b){
   P.forEach(s=>s.g=g);
   function round(){rd++;st='count';bl=[];cd[0]=cd[1]=0;
     ps=[{x:120,y:250,a:0,hp:100,mv:0},{x:680,y:250,a:Math.PI,hp:100,mv:0}];
-    P.forEach((s,i)=>s.emit('fg:round',{rd,sc:[sc[i],sc[1-i]],names:[P[i].nick,P[1-i].nick]}));
+    P.forEach((s,i)=>s.emit('fg:round',{rd,sc:[sc[i],sc[1-i]],names:[P[i].nick,P[1-i].nick],walls:WALLS}));
     T(()=>{st='fight'},3000)}
   function won(w){st='res';sc[w]++;
     P.forEach((s,i)=>s.emit('fg:res',{win:w==i?0:1,sc:[sc[i],sc[1-i]]}));
@@ -83,9 +87,9 @@ function FG(a,b){
   function tick(){const dt=.033;
     if(st=='fight'){
       for(let i=0;i<2;i++){const p=ps[i],n=inp[i];let dx=n.dx,dy=n.dy;const m=Math.hypot(dx,dy);if(m>1){dx/=m;dy/=m}
-        p.x=cl(p.x+dx*180*dt,14,W-14);p.y=cl(p.y+dy*180*dt,14,H-14);p.a=n.a;p.mv=m>.05?1:0;cd[i]-=dt;
+        p.x=cl(p.x+dx*180*dt,14,W-14);p.y=cl(p.y+dy*180*dt,14,H-14);push(p);p.a=n.a;p.mv=m>.05?1:0;cd[i]-=dt;
         if(n.f&&cd[i]<=0){cd[i]=.35;bl.push({o:i,x:p.x,y:p.y,vx:Math.cos(p.a)*520,vy:Math.sin(p.a)*520,l:.8})}}
-      for(const o of bl){o.x+=o.vx*dt;o.y+=o.vy*dt;o.l-=dt;const t=ps[1-o.o];
+      for(const o of bl){o.x+=o.vx*dt;o.y+=o.vy*dt;o.l-=dt;if(inW(o.x,o.y))o.l=0;const t=ps[1-o.o];
         if(o.l>0&&Math.hypot(t.x-o.x,t.y-o.y)<20){t.hp-=20;o.l=0;if(t.hp<=0){snap();return won(o.o)}}}
       bl=bl.filter(o=>o.l>0);
     }
