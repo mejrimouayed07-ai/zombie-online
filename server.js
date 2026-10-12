@@ -1,3 +1,4 @@
+
 // Zombie Siege 3D - online server (Express + Socket.io). Server is authoritative.
 const express=require('express'),http=require('http'),fs=require('fs'),path=require('path');
 const app=express(),srv=http.createServer(app),io=require('socket.io')(srv,{cors:{origin:'*'}});
@@ -41,23 +42,38 @@ const ITEMS={
  skin_violet:{t:'skin',r:'rare',n:'Violet Storm',p:TP.rare,sh:'#7a3ad4',pn:'#2a1450'},
  skin_void:{t:'skin',r:'super',n:'Void Walker',p:TP.super,sh:'#14001f',pn:'#6a00ff'},
  skin_solar:{t:'skin',r:'super',n:'Solar Flare',p:TP.super,sh:'#ffb000',pn:'#ff3b00'},
- skin_diamond:{t:'skin',r:'super',n:'Diamond',p:TP.super,sh:'#7ae8ff',pn:'#e8ffff'},
- smg:{t:'weapon',r:'common',n:'SMG',p:TP.common,dmg:9,cd:.13,spd:520,spr:.08},
- rifle:{t:'weapon',r:'common',n:'Rifle',p:TP.common,dmg:34,cd:.6,spd:800,spr:0},
+ skin_diamond:{t:'skin',r:'super',w:1,n:'Diamond',p:TP.super,sh:'#7ae8ff',pn:'#e8ffff'},
  tr_gold:{t:'tracer',r:'epic',n:'Gold Weapon',p:TP.epic,col:1,sh:'#ffd24a'},
  tr_cyan:{t:'tracer',r:'epic',n:'Cyan Weapon',p:TP.epic,col:2,sh:'#4af0ff'},
  tr_pink:{t:'tracer',r:'epic',n:'Pink Weapon',p:TP.epic,col:3,sh:'#ff4ab8'},
  tr_green:{t:'tracer',r:'rare',n:'Plasma Green',p:TP.rare,col:4,sh:'#8aff4a'},
  tr_purple:{t:'tracer',r:'rare',n:'Royal Purple',p:TP.rare,col:5,sh:'#b04aff'},
- tr_fire:{t:'tracer',r:'super',n:'Inferno',p:TP.super,col:6,sh:'#ff5a1a'}};
+ tr_fire:{t:'tracer',r:'super',w:1,n:'Inferno',p:TP.super,col:6,sh:'#ff5a1a'}};
 // lucky wheel: 2000 coins per spin, cosmetic prizes only (fair in PvP). Pity: a rare+ item is guaranteed within 10 spins.
 const SPIN=2000,DUP={epic:900,rare:1500,super:6000},
- WHEEL=[{k:'c100',w:20,c:100},{k:'c300',w:16,c:300},{k:'c500',w:12,c:500},{k:'c1000',w:8,c:1000},{k:'c2000',w:4,c:2000},{k:'c5000',w:1,c:5000},
-  {k:'skin_epic',w:12,t:'skin',r:'epic'},{k:'skin_rare',w:7,t:'skin',r:'rare'},{k:'skin_super',w:2,t:'skin',r:'super'},
-  {k:'tr_epic',w:10,t:'tracer',r:'epic'},{k:'tr_rare',w:6,t:'tracer',r:'rare'},{k:'tr_super',w:2,t:'tracer',r:'super'}];
+ WHEEL=[{k:'c100',w:215,c:100},{k:'c300',w:160,c:300},{k:'c500',w:120,c:500},{k:'c1000',w:80,c:1000},{k:'c2000',w:40,c:2000},{k:'c5000',w:10,c:5000},
+  {k:'skin_epic',w:120,t:'skin',r:'epic'},{k:'skin_rare',w:70,t:'skin',r:'rare'},{k:'skin_super',w:15,t:'skin',r:'super'},
+  {k:'tr_epic',w:100,t:'tracer',r:'epic'},{k:'tr_rare',w:60,t:'tracer',r:'rare'},
+  {k:'diamond',w:5,id:'skin_diamond',r:'super'},{k:'inferno',w:5,id:'tr_fire',r:'super'}];   // Diamond + Inferno: 0.5% each, wheel only
 const WP0={dmg:20,cd:.35,spd:520,spr:0};
-const look=r=>{const a=ITEMS[(r.eq||{}).skin],t=ITEMS[(r.eq||{}).tracer];return{sk:a?{sh:a.sh,pn:a.pn}:null,tr:t?t.col:0}};
-const view=s=>{const r=db[s.nick];return{...look(r),c:r.c,own:r.own,eq:r.eq,items:Object.entries(ITEMS).map(([id,v])=>({id,t:v.t,n:v.n,p:v.p,sh:v.sh,pn:v.pn,r:v.r||'common',dm:v.dmg,cd:v.cd}))}};
+
+// ---------- levels, launch pass rewards and boxes ----------
+const MAXL=100,XPN=l=>50+l*15,CUM=[0];for(let i=0;i<MAXL;i++)CUM.push(CUM[i]+XPN(i));
+const lvOf=xp=>{let l=0;while(l<MAXL&&xp>=CUM[l+1])l++;return l};
+const prog=r=>{const xp=(r.eq&&r.eq._xp)|0,lv=lvOf(xp);return{lv,lx:xp-CUM[lv],ln:lv>=MAXL?0:XPN(lv),bx:(r.eq&&r.eq._bx)||{}}};
+function passReward(L){if(L==10)return{t:'item',id:'skin_olive'};if(L==20)return{t:'item',id:'tr_cyan'};if(L==30)return{t:'item',id:'skin_gold'};
+  if(L==5)return{t:'box',k:'bronze'};if(L==25)return{t:'box',k:'gold'};if(L==15||(L>30&&L%10==5))return{t:'box',k:'silver'};
+  return{t:'coins',v:L<=30?100+L*40:1500}}
+function grant(r,L){const p=passReward(L),o={L,...p};r.eq=r.eq||{};
+  if(p.t=='coins')r.c+=p.v;
+  else if(p.t=='box'){const b=r.eq._bx=r.eq._bx||{};b[p.k]=(b[p.k]|0)+1}
+  else{const it=ITEMS[p.id];o.n=it.n;if(r.own.includes(p.id)){o.dup=Math.round(it.p*.4);r.c+=o.dup}else r.own.push(p.id)}
+  return o}
+function award(s,coins,xp){const r=db[s.nick];if(!r)return{c:0,xp:0};r.eq=r.eq||{};pay(s,coins);const old=lvOf(r.eq._xp|0);r.eq._xp=(r.eq._xp|0)+xp;
+  const nw=lvOf(r.eq._xp),ups=[];for(let l=old+1;l<=nw;l++)ups.push(grant(r,l));mark(s.nick);return{c:r.c,xp,ups,...prog(r)}}
+const BOX={bronze:{c:[[200,50],[400,30],[800,15]],i:[5,['epic']]},silver:{c:[[500,35],[1000,35],[2000,20]],i:[10,['epic','rare']]},gold:{c:[[1000,30],[2500,30],[5000,20]],i:[20,['rare','rare','super']]}};
+const look=r=>{const a=ITEMS[(r.eq||{}).skin],t=ITEMS[(r.eq||{}).tracer];return{sk:a?{sh:a.sh,pn:a.pn}:null,tr:t?t.col:0,...prog(r)}};
+const view=s=>{const r=db[s.nick];return{...look(r),c:r.c,own:r.own,eq:r.eq,items:Object.entries(ITEMS).map(([id,v])=>({id,t:v.t,n:v.n,p:v.p,sh:v.sh,pn:v.pn,r:v.r||'common',w:v.w?1:0}))}};
 const WALLS=[[360,200,80,100],[200,100,60,80],[540,320,60,80],[200,320,60,80],[540,100,60,80]]; // [x,y,w,h] buildings
 const push=(p,WS)=>{for(const[x,y,w,h]of WS){const cx=cl(p.x,x,x+w),cy=cl(p.y,y,y+h);let dx=p.x-cx,dy=p.y-cy,d=Math.hypot(dx,dy);
   if(d<14){if(d<.001){dx=1;dy=0;d=1}p.x=cx+dx/d*14;p.y=cy+dy/d*14}}};
@@ -87,6 +103,15 @@ io.on('connection',s=>{
   });
   s.on('lb',cb=>typeof cb=='function'&&cb(top()));
   s.on('pi',cb=>typeof cb=='function'&&cb());
+  s.on('pass',cb=>{if(typeof cb!='function'||!s.nick||!db[s.nick])return;const r=db[s.nick];
+    cb({...prog(r),c:r.c,rewards:Array.from({length:30},(_,i)=>{const p=passReward(i+1);return{L:i+1,t:p.t,v:p.v,k:p.k,n:p.id?ITEMS[p.id].n:undefined}})})});
+  s.on('box',(k,cb)=>{if(typeof cb!='function'||!s.nick||!db[s.nick]||!BOX[k])return;const r=db[s.nick],b=(r.eq&&r.eq._bx)||{};if(!(b[k]>0))return cb({e:'No box left'});
+    b[k]--;r.eq._bx=b;const B=BOX[k];let x=Math.random()*(B.c.reduce((a,v)=>a+v[1],0)+B.i[0]),pr={};
+    for(const[v,w]of B.c){if((x-=w)<0){pr={coins:v};break}}
+    if(!pr.coins){const rar=B.i[1][Math.random()*B.i[1].length|0],cand=Object.keys(ITEMS).filter(id=>ITEMS[id].r==rar&&!ITEMS[id].w),id=cand[Math.random()*cand.length|0];
+      if(id){const it=ITEMS[id];pr={id,n:it.n,r:rar};if(r.own.includes(id)){pr.dup=Math.round(it.p*.4);r.c+=pr.dup}else r.own.push(id)}else pr={coins:200}}
+    if(pr.coins)r.c+=pr.coins;mark(s.nick);cb({ok:1,prize:pr,c:r.c,...prog(r)})});
+  s.on('lbl',cb=>typeof cb=='function'&&cb(Object.entries(db).map(([n,v])=>{const x=(v.eq&&v.eq._xp)|0;return{n,lv:lvOf(x),x}}).sort((a,b)=>b.x-a.x).slice(0,10)));
   s.on('ren',(nn,cb)=>{if(typeof cb!='function'||!s.nick||!db[s.nick])return;nn=String(nn||'').replace(/[<>&"'\u0000-\u001f]/g,'').trim().slice(0,14);
     if(nn.length<2)return cb({e:'Name too short (2+ characters)'});if(nn==s.nick)return cb({ok:1,nick:nn});if(db[nn])return cb({e:'Name already taken'});
     db[nn]=db[s.nick];delete db[s.nick];dq.add(s.nick);mark(nn);s.nick=nn;cb({ok:1,nick:nn})});
@@ -102,7 +127,7 @@ io.on('connection',s=>{
     let x=Math.random()*pool.reduce((a,w)=>a+w.w,0),pz=pool[0];for(const w of pool){if((x-=w.w)<0){pz=w;break}}
     const res={k:pz.k};
     if(pz.c){r.c+=pz.c;res.coins=pz.c}
-    else{const cand=Object.keys(ITEMS).filter(id=>ITEMS[id].t==pz.t&&ITEMS[id].r==pz.r),id=cand[Math.random()*cand.length|0];res.id=id;res.n=ITEMS[id].n;res.r=pz.r;
+    else{const cand=Object.keys(ITEMS).filter(id=>ITEMS[id].t==pz.t&&ITEMS[id].r==pz.r&&!ITEMS[id].w),id=pz.id||cand[Math.random()*cand.length|0];res.id=id;res.n=ITEMS[id].n;res.r=pz.r;
       if(r.own.includes(id)){res.dup=DUP[pz.r];r.c+=res.dup}else r.own.push(id)}
     r.eq._sp=(pz.r=='rare'||pz.r=='super')?0:(r.eq._sp|0)+1;mark(s.nick);cb(Object.assign(view(s),{prize:res}))});
   s.on('q',(m,cb)=>{leave(s);const n=m=='cs2'?4:2,ack=o=>typeof cb=='function'&&cb(o);
@@ -141,7 +166,7 @@ function QD(a,b){
     em('qd:res',i=>({win:w==i?0:1,foul:x.ms==null,ms:x.ms|0,sc:[sc[i],sc[1-i]]}));
     T(sc[w]>=3?()=>finish(w):round,2200)}
   function finish(w){if(over)return;over=1;tm.forEach(clearTimeout);
-    P.forEach((s,i)=>{s.g=null;const gain=w==i?60:10;s.emit('qd:end',{win:w==i?0:1,sc:[sc[i],sc[1-i]],g:gain,c:pay(s,gain)})})}
+    P.forEach((s,i)=>{s.g=null;const gain=w==i?60:10;s.emit('qd:end',{win:w==i?0:1,sc:[sc[i],sc[1-i]],g:gain,...award(s,gain,w==i?80:30)})})}
   round();
 }
 
@@ -166,7 +191,7 @@ function FG(a,b){
     P.forEach((s,i)=>s.emit('fg:res',{win:w==i?0:1,sc:[sc[i],sc[1-i]]}));
     T(sc[w]>=3?()=>finish(w):round,2500)}
   function finish(w){if(over)return;over=1;clearInterval(iv);tm.forEach(clearTimeout);
-    P.forEach((s,i)=>{s.g=null;const gain=w==i?120:20;s.emit('fg:end',{win:w==i?0:1,sc:[sc[i],sc[1-i]],g:gain,c:pay(s,gain)})})}
+    P.forEach((s,i)=>{s.g=null;const gain=w==i?120:20;s.emit('fg:end',{win:w==i?0:1,sc:[sc[i],sc[1-i]],g:gain,...award(s,gain,w==i?120:40)})})}
   function snap(){const f=p=>[p.x|0,p.y|0,+p.a.toFixed(2),Math.max(0,p.hp),p.mv],B=bl.map(o=>[o.x|0,o.y|0,o.vx|0,o.vy|0,o.k|0]);
     P.forEach((s,i)=>s.volatile.emit('fg:s',{p:[f(ps[i]),f(ps[1-i])],b:B,st}))}
   function tick(){const dt=.033;
@@ -184,7 +209,7 @@ function FG(a,b){
 }
 
 // ---------- Co-op Zombies: 2 players vs waves (server-authoritative) ----------
-const eqO=s=>(db[s.nick]&&db[s.nick].eq)||{},wpO=s=>Object.assign({},WP0,ITEMS[eqO(s).weapon]||{},{col:(ITEMS[eqO(s).tracer]||{}).col||0}),skO=s=>{const it=ITEMS[eqO(s).skin];return it?{sh:it.sh,pn:it.pn}:null};
+const eqO=s=>(db[s.nick]&&db[s.nick].eq)||{},wpO=s=>Object.assign({},WP0,{col:(ITEMS[eqO(s).tracer]||{}).col||0}),skO=s=>{const it=ITEMS[eqO(s).skin];return it?{sh:it.sh,pn:it.pn}:null};
 function CZ(a,b){
   const WL=genWalls(W,H,2,170,[[300,250,70],[500,250,70]]),MAP=Math.random()*5|0;
   const P=[a,b||{nick:'-',connected:false,emit(){},volatile:{emit(){}}}],inp=[{dx:0,dy:0,a:0,f:0},{dx:0,dy:0,a:0,f:0}],cd=[0,0],WPN=P.map(wpO),gone=[0,b?0:1],kl=[0,0];
@@ -199,7 +224,7 @@ function CZ(a,b){
   P.forEach((s,i)=>s.emit('cz:start',{names:[P[i].nick,P[1-i].nick],walls:WL,aw:W,ah:H,map:MAP,sk:[skO(P[i]),skO(P[1-i])]}));
   function nextWave(){wave++;left=6+wave*3;sp=0;st='fight';ps.forEach((p,i)=>{if(gone[i])return;p.hp=p.hp<=0?50:Math.min(100,p.hp+25)})}
   function finish(){if(over)return;over=1;clearInterval(iv);
-    P.forEach((s,i)=>{if(gone[i])return;s.g=null;const gain=wave*15+kl[i]*2;s.emit('cz:end',{wave,kills:kl[i],g:gain,c:pay(s,gain)})})}
+    P.forEach((s,i)=>{if(gone[i])return;s.g=null;const gain=wave*15+kl[i]*2;s.emit('cz:end',{wave,kills:kl[i],g:gain,...award(s,gain,wave*20+kl[i]*2)})})}
   function snap(){const f=p=>[p.x|0,p.y|0,+p.a.toFixed(2),Math.max(0,Math.ceil(p.hp)),p.mv],B=bl.map(o=>[o.x|0,o.y|0,o.vx|0,o.vy|0,o.k|0]),Z=zs.map(z=>[z.id,z.x|0,z.y|0,Math.max(1,Math.round(z.hp/z.mhp*100))]);
     P.forEach((s,i)=>{if(!gone[i])s.volatile.emit('cz:s',{p:[f(ps[i]),f(ps[1-i])],b:B,z:Z,w:wave,l:left+zs.length,st})})}
   function tick(){try{const dt=.033;
@@ -244,7 +269,7 @@ function CS(P){
   P.forEach(s=>s.g=g);
   P.forEach((s,i)=>s.emit('cs:start',{names:P.map(x=>x.nick),teams:ps.map(p=>p.t),me:i,walls:WL,aw:AW,ah:AH,map:MAP,ch:CHP}));
   function finish(w){if(over)return;over=1;clearInterval(iv);
-    P.forEach((s,i)=>{if(gone[i])return;s.g=null;const win=w<0?2:ps[i].t==w?0:1,gain=win==0?200:win==2?80:30;s.emit('cs:end',{win,g:gain,c:pay(s,gain)})})}
+    P.forEach((s,i)=>{if(gone[i])return;s.g=null;const win=w<0?2:ps[i].t==w?0:1,gain=win==0?200:win==2?80:30;s.emit('cs:end',{win,g:gain,...award(s,gain,win==0?160:win==2?80:50)})})}
   function snap(){const A=ps.map(p=>[p.x|0,p.y|0,+p.a.toFixed(2),Math.max(0,Math.ceil(p.hp)),p.mv,p.t]),B=bl.map(o=>[o.x|0,o.y|0,o.vx|0,o.vy|0,o.k|0]),S2=sts.flat().map(s=>[s.id,s.k,s.x,s.y,s.t]);
     P.forEach((s,i)=>{if(!gone[i])s.volatile.emit('cs:s',{p:A,b:B,s:S2,c:[Math.max(0,cas[0].hp|0),Math.max(0,cas[1].hp|0)],tc:tc[ps[i].t]|0,tl:tl|0})})}
   function tick(){try{const dt=.033;tl-=dt;
