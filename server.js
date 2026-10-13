@@ -132,8 +132,8 @@ io.on('connection',s=>{
   s.on('q',(m,cb)=>{leave(s);const n=m=='cs2'?4:2,ack=o=>typeof cb=='function'&&cb(o);
     if(!s.nick||!q[m]||s.g)return ack({e:'Mode not available'});
     q[m]=q[m].filter(x=>x.connected);q[m].push(s);
-    if(q[m].length>=n){clearTimeout(QT[m]);QT[m]=null;startQ(m,q[m].splice(0,n));if(q[m].length)QT[m]=setTimeout(()=>fillQ(m),BOT_WAIT)}
-    else if(!QT[m])QT[m]=setTimeout(()=>fillQ(m),BOT_WAIT);   // nobody else came: a bot fills the match
+    if(q[m].length>=n){clearTimeout(QT[m]);QT[m]=null;startQ(m,q[m].splice(0,n));if(q[m].length)QT[m]=setTimeout(()=>fillQ(m),botWait())}
+    else if(!QT[m])QT[m]=setTimeout(()=>fillQ(m),botWait());   // nobody else came: a bot fills the match
     ack({ok:1})});
   s.on('cancel',()=>{leave(s);s.g&&s.g.end&&s.g.end(s)});
   s.on('qd:fire',()=>s.g&&s.g.fire&&s.g.fire(s));
@@ -143,7 +143,7 @@ io.on('connection',s=>{
 });
 
 // ---------- bots: fill empty matches after a short wait (hard difficulty, random player-like names) ----------
-const BOT_WAIT=+process.env.BOT_WAIT_MS||10000,QT={};
+const botWait=()=>+process.env.BOT_WAIT_MS||3500+Math.random()*2500,QT={};   // a bot joins after ~3.5-6 s (random, looks natural)
 const BN1=['Slim','Mehdi','Yassine','Rami','Aymen','Sofien','Wassim','Bilel','Oussama','Hamza','Nader','Amine','Karim','Fares','Skander','Houssem','Zied','Anis','Marwen','Tarek','Walid','Ghazi','Khalil','Iheb'],
   BN2=['Shadow','Ghost','Raven','Storm','Viper','Nova','Titan','Rogue','Blaze','Falcon','Zero','Hunter','Wolf','Phoenix','Sniper','Reaper','Ninja','Dragon','Hawk','Cobra'],usedBN=new Set();
 function botName(){for(let t=0;t<30;t++){const r=Math.random();let n;
@@ -162,7 +162,7 @@ function startQ(m,g){if(m=='cs1'||m=='cs2')CS(g);else({qd:QD,fg:FG,cz:CZ})[m](g[
 function fillQ(m){QT[m]=null;q[m]=q[m].filter(x=>x.connected&&!x.g);if(!q[m].length)return;
   const n=m=='cs2'?4:2,g=q[m].splice(0,n);while(g.length<n)g.push(mkBot());
   if(m!='cz')g.sort(()=>Math.random()-.5);          // random side / team
-  startQ(m,g);if(q[m].length)QT[m]=setTimeout(()=>fillQ(m),BOT_WAIT)}
+  startQ(m,g);if(q[m].length)QT[m]=setTimeout(()=>fillQ(m),botWait())}
 
 // ---------- Quick Draw: first to 3, server decides with ping compensation ----------
 function QD(a,b){
