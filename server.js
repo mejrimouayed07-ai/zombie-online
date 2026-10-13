@@ -1,4 +1,3 @@
-
 // Zombie Siege 3D - online server (Express + Socket.io). Server is authoritative.
 const express=require('express'),http=require('http'),fs=require('fs'),path=require('path');
 const app=express(),srv=http.createServer(app),io=require('socket.io')(srv,{cors:{origin:'*'}});
@@ -88,7 +87,7 @@ function genWalls(aw,ah,n,clr,avoid){const out=[],hit=(a,b)=>a[0]<b[0]+b[2]+36&&
   return out}
 const top=()=>Object.entries(db).map(([n,v])=>({n,c:v.c})).sort((a,b)=>b.c-a.c).slice(0,10);
 const pay=(s,c)=>{if(s.nick&&db[s.nick]){db[s.nick].c+=c;mark(s.nick);return db[s.nick].c}return 0};
-const leave=s=>{clearTimeout(s.qt);for(const k in q)q[k]=q[k].filter(x=>x!==s)};
+const leave=s=>{clearTimeout(s.qt);for(const k in q){q[k]=q[k].filter(x=>x!==s);if(!q[k].length&&QT[k]){clearTimeout(QT[k]);QT[k]=null}}};
 
 io.on('connection',s=>{
   s.rtt=60;
@@ -133,8 +132,8 @@ io.on('connection',s=>{
   s.on('q',(m,cb)=>{leave(s);const n=m=='cs2'?4:2,ack=o=>typeof cb=='function'&&cb(o);
     if(!s.nick||!q[m]||s.g)return ack({e:'Mode not available'});
     q[m]=q[m].filter(x=>x.connected);q[m].push(s);
-    if(m=='cz')s.qt=setTimeout(()=>{if(q.cz.includes(s)&&s.connected&&!s.g){q.cz=q.cz.filter(x=>x!==s);CZ(s,null)}},8000); // nobody joined: play solo
-    if(q[m].length>=n){const g=q[m].splice(0,n);if(m=='cs1'||m=='cs2')CS(g);else({qd:QD,fg:FG,cz:CZ})[m](g[0],g[1])}
+    if(q[m].length>=n){clearTimeout(QT[m]);QT[m]=null;startQ(m,q[m].splice(0,n));if(q[m].length)QT[m]=setTimeout(()=>fillQ(m),BOT_WAIT)}
+    else if(!QT[m])QT[m]=setTimeout(()=>fillQ(m),BOT_WAIT);   // nobody else came: a bot fills the match
     ack({ok:1})});
   s.on('cancel',()=>{leave(s);s.g&&s.g.end&&s.g.end(s)});
   s.on('qd:fire',()=>s.g&&s.g.fire&&s.g.fire(s));
@@ -142,6 +141,28 @@ io.on('connection',s=>{
   s.on('cs:b',k=>s.g&&s.g.build&&s.g.build(s,k));
   s.on('disconnect',()=>{clearInterval(pg);leave(s);s.g&&s.g.end&&s.g.end(s)});
 });
+
+// ---------- bots: fill empty matches after a short wait (hard difficulty, random player-like names) ----------
+const BOT_WAIT=+process.env.BOT_WAIT_MS||10000,QT={};
+const BN1=['Slim','Mehdi','Yassine','Rami','Aymen','Sofien','Wassim','Bilel','Oussama','Hamza','Nader','Amine','Karim','Fares','Skander','Houssem','Zied','Anis','Marwen','Tarek','Walid','Ghazi','Khalil','Iheb'],
+  BN2=['Shadow','Ghost','Raven','Storm','Viper','Nova','Titan','Rogue','Blaze','Falcon','Zero','Hunter','Wolf','Phoenix','Sniper','Reaper','Ninja','Dragon','Hawk','Cobra'],usedBN=new Set();
+function botName(){for(let t=0;t<30;t++){const r=Math.random();let n;
+  if(r<.4)n='Player'+(1000+Math.random()*9000|0);
+  else if(r<.7)n=BN1[Math.random()*BN1.length|0]+(Math.random()<.5?'_':'')+(Math.random()*99|0);
+  else n=BN2[Math.random()*BN2.length|0]+(Math.random()<.5?'x':'_')+(10+Math.random()*990|0);
+  n=n.slice(0,14);if(!db[n]&&!usedBN.has(n)){if(usedBN.size>300)usedBN.clear();usedBN.add(n);return n}}
+  return 'Player'+(Date.now()%100000)}
+const mkBot=()=>({nick:botName(),isBot:true,connected:true,rtt:0,g:null,emit(){},volatile:{emit(){}}});
+const los=(ax,ay,bx,by,WS)=>{for(let k=1;k<10;k++)if(inW(ax+(bx-ax)*k/10,ay+(by-ay)*k/10,WS))return false;return true};
+function steer(p,mx,my,WS,AW,AH){const m=Math.hypot(mx,my);if(m<.01)return[0,0];mx/=m;my/=m;
+  const ok=(x,y)=>x>20&&x<AW-20&&y>20&&y<AH-20&&!inW(x,y,WS)&&!inW(p.x+(x-p.x)*.5,p.y+(y-p.y)*.5,WS);
+  for(const ang of[0,.6,-.6,1.2,-1.2,1.9,-1.9]){const c=Math.cos(ang),s=Math.sin(ang),dx=mx*c-my*s,dy=mx*s+my*c;if(ok(p.x+dx*38,p.y+dy*38))return[dx,dy]}
+  return[mx,my]}
+function startQ(m,g){if(m=='cs1'||m=='cs2')CS(g);else({qd:QD,fg:FG,cz:CZ})[m](g[0],g[1])}
+function fillQ(m){QT[m]=null;q[m]=q[m].filter(x=>x.connected&&!x.g);if(!q[m].length)return;
+  const n=m=='cs2'?4:2,g=q[m].splice(0,n);while(g.length<n)g.push(mkBot());
+  if(m!='cz')g.sort(()=>Math.random()-.5);          // random side / team
+  startQ(m,g);if(q[m].length)QT[m]=setTimeout(()=>fillQ(m),BOT_WAIT)}
 
 // ---------- Quick Draw: first to 3, server decides with ping compensation ----------
 function QD(a,b){
@@ -161,7 +182,7 @@ function QD(a,b){
   P.forEach(s=>s.g=g);
   em('qd:start',i=>({names:[P[i].nick,P[1-i].nick]}));
   function round(){rd++;st='count';fires=[null,null];em('qd:round',()=>({rd,map:Math.random()*5|0}));
-    T(()=>{st='hold';T(()=>{st='fire';tGo=Date.now();P.forEach(s=>s.emit('qd:go'))},rnd(300,1500))},3000)}
+    T(()=>{st='hold';T(()=>{st='fire';tGo=Date.now();P.forEach(s=>{s.emit('qd:go');if(s.isBot)T(()=>g.fire(s),150+Math.random()*90)})},rnd(300,1500))},3000)}
   function score(w,x){st='res';sc[w]++;
     em('qd:res',i=>({win:w==i?0:1,foul:x.ms==null,ms:x.ms|0,sc:[sc[i],sc[1-i]]}));
     T(sc[w]>=3?()=>finish(w):round,2200)}
@@ -192,10 +213,15 @@ function FG(a,b){
     T(sc[w]>=3?()=>finish(w):round,2500)}
   function finish(w){if(over)return;over=1;clearInterval(iv);tm.forEach(clearTimeout);
     P.forEach((s,i)=>{s.g=null;const gain=w==i?120:20;s.emit('fg:end',{win:w==i?0:1,sc:[sc[i],sc[1-i]],g:gain,...award(s,gain,w==i?120:40)})})}
+  function botFG(i){const me=ps[i],t=ps[1-i];if(me.hp<=0||t.hp<=0)return{dx:0,dy:0,a:me.a,f:0};
+    const dx=t.x-me.x,dy=t.y-me.y,d=Math.hypot(dx,dy)||1,side=Math.sin(Date.now()/700+i*2)>0?1:-1,w=d>250?1:d<140?-1:0;
+    const[mx,my]=steer(me,dx/d*w+(-dy/d)*side*.9,dy/d*w+(dx/d)*side*.9,WL,AW,AH);
+    return{dx:mx,dy:my,a:Math.atan2(dy,dx)+(Math.random()-.5)*.16,f:los(me.x,me.y,t.x,t.y,WL)&&d<430&&Math.random()>.1?1:0}}
   function snap(){const f=p=>[p.x|0,p.y|0,+p.a.toFixed(2),Math.max(0,p.hp),p.mv],B=bl.map(o=>[o.x|0,o.y|0,o.vx|0,o.vy|0,o.k|0]);
     P.forEach((s,i)=>s.volatile.emit('fg:s',{p:[f(ps[i]),f(ps[1-i])],b:B,st}))}
   function tick(){const dt=.033;
     if(st=='fight'){
+      P.forEach((s,i)=>{if(s.isBot)inp[i]=botFG(i)});
       for(let i=0;i<2;i++){const p=ps[i],n=inp[i];let dx=n.dx,dy=n.dy;const m=Math.hypot(dx,dy);if(m>1){dx/=m;dy/=m}
         p.x=cl(p.x+dx*180*dt,14,AW-14);p.y=cl(p.y+dy*180*dt,14,AH-14);push(p,WL);p.a=n.a;p.mv=m>.05?1:0;cd[i]-=dt;
         if(n.f&&cd[i]<=0){const w=WPN[i],a=p.a+(Math.random()-.5)*w.spr;cd[i]=w.cd;bl.push({o:i,x:p.x,y:p.y,vx:Math.cos(a)*w.spd,vy:Math.sin(a)*w.spd,l:.8,d:w.dmg,k:w.col})}}
@@ -217,11 +243,15 @@ function CZ(a,b){
   let zs=[],bl=[],wave=0,left=0,sp=0,st='break',br=3,zid=0,over=0;
   const alive=i=>!gone[i]&&ps[i].hp>0;
   const g={
-    end(s){const i=P.indexOf(s);if(i<0||over)return;gone[i]=1;ps[i].hp=0;s.g=null;if(gone[0]&&gone[1])finish()},
+    end(s){const i=P.indexOf(s);if(i<0||over)return;gone[i]=1;ps[i].hp=0;s.g=null;if((gone[0]&&gone[1])||!P.some((x,j)=>!x.isBot&&!gone[j]))finish()},
     in(s,d){const i=P.indexOf(s);if(i<0)return;inp[i]={dx:cl(+d.dx||0,-1,1),dy:cl(+d.dy||0,-1,1),a:+d.a||0,f:d.f?1:0}}
   };
   P.forEach(s=>s.g=g);
   P.forEach((s,i)=>s.emit('cz:start',{names:[P[i].nick,P[1-i].nick],walls:WL,aw:W,ah:H,map:MAP,sk:[skO(P[i]),skO(P[1-i])]}));
+  function botCZ(){const me=ps[1],hu=ps[0];let nz=null,nd=1e9;for(const z of zs){const d=Math.hypot(z.x-me.x,z.y-me.y);if(d<nd){nd=d;nz=z}}
+    let mx=0,my=0;if(nz&&nd<110){mx=me.x-nz.x;my=me.y-nz.y}else if(alive(0)){const dh=Math.hypot(hu.x-me.x,hu.y-me.y);if(dh>170){mx=hu.x-me.x;my=hu.y-me.y}else if(dh<70){mx=me.x-hu.x;my=me.y-hu.y}}
+    const[dx,dy]=steer(me,mx,my,WL,W,H);let a=me.a,f=0;if(nz&&nd<330&&los(me.x,me.y,nz.x,nz.y,WL)){a=Math.atan2(nz.y-me.y,nz.x-me.x)+(Math.random()-.5)*.1;f=1}
+    inp[1]={dx,dy,a,f}}
   function nextWave(){wave++;left=6+wave*3;sp=0;st='fight';ps.forEach((p,i)=>{if(gone[i])return;p.hp=p.hp<=0?50:Math.min(100,p.hp+25)})}
   function finish(){if(over)return;over=1;clearInterval(iv);
     P.forEach((s,i)=>{if(gone[i])return;s.g=null;const gain=wave*15+kl[i]*2;s.emit('cz:end',{wave,kills:kl[i],g:gain,...award(s,gain,wave*20+kl[i]*2)})})}
@@ -230,6 +260,7 @@ function CZ(a,b){
   function tick(){try{const dt=.033;
     if(st=='break'){br-=dt;if(br<=0)nextWave()}
     else{
+      if(P[1].isBot&&alive(1))botCZ();
       for(let i=0;i<2;i++){if(!alive(i))continue;const p=ps[i],n=inp[i];let dx=n.dx,dy=n.dy;const m=Math.hypot(dx,dy);if(m>1){dx/=m;dy/=m}
         p.x=cl(p.x+dx*180*dt,14,W-14);p.y=cl(p.y+dy*180*dt,14,H-14);push(p,WL);p.a=n.a;p.mv=m>.05?1:0;cd[i]-=dt;
         if(n.f&&cd[i]<=0){const w=WPN[i],aa=p.a+(Math.random()-.5)*w.spr;cd[i]=w.cd;bl.push({o:i,x:p.x,y:p.y,vx:Math.cos(aa)*w.spd,vy:Math.sin(aa)*w.spd,l:.8,d:w.dmg,k:w.col})}}
@@ -261,13 +292,23 @@ function CS(P){
   const spawn=i=>{const p=ps[i],k=ps.slice(0,i).filter(q=>q.t==p.t).length;p.x=p.t?AW-170:170;p.y=AH/2+(k?40:-40);p.a=p.t?Math.PI:0;p.hp=100;p.rt=0};
   ps.forEach((_,i)=>spawn(i));
   const g={
-    end(s){const i=P.indexOf(s);if(i<0||over)return;gone[i]=1;ps[i].hp=0;ps[i].rt=1e9;s.g=null;const t=ps[i].t;if(!ps.some((p,j)=>p.t==t&&!gone[j]))finish(1-t)},
+    end(s){const i=P.indexOf(s);if(i<0||over)return;gone[i]=1;ps[i].hp=0;ps[i].rt=1e9;s.g=null;const t=ps[i].t;if(!P.some((x,j)=>!x.isBot&&!gone[j]))return finish(-1);if(!ps.some((p,j)=>p.t==t&&!gone[j]))finish(1-t)},
     in(s,d){const i=P.indexOf(s);if(i<0)return;inp[i]={dx:cl(+d.dx||0,-1,1),dy:cl(+d.dy||0,-1,1),a:+d.a||0,f:d.f?1:0}},
     build(s,k){const i=P.indexOf(s);if(i<0||over||!CSC[k]||ps[i].hp<=0)return;const t=ps[i].t,n=sts[t].filter(x=>x.k==k).length;
       if(n>=3||tc[t]<CSC[k])return;const sl=CSL[k][n],bx=90+sl[0];tc[t]-=CSC[k];sts[t].push({id:++sid,k,t,x:t?AW-bx:bx,y:AH/2+sl[1],cd:1})}
   };
   P.forEach(s=>s.g=g);
   P.forEach((s,i)=>s.emit('cs:start',{names:P.map(x=>x.nick),teams:ps.map(p=>p.t),me:i,walls:WL,aw:AW,ah:AH,map:MAP,ch:CHP}));
+  function botCS(i){const p=ps[i],t=p.t,ec=cas[1-t],oc=cas[t],role=ps.map((q,j)=>j).filter(j=>ps[j].t==t).indexOf(i);
+    let tgt=null,bd=340;ps.forEach((q,j)=>{if(q.t!=t&&q.hp>0&&!gone[j]){const d=Math.hypot(q.x-p.x,q.y-p.y);if(d<bd&&los(p.x,p.y,q.x,q.y,WL)){bd=d;tgt=q}}});
+    if(Math.random()<.02){const k=tc[t]>=CSC.can&&sts[t].filter(x=>x.k=='can').length<3?'can':tc[t]>=CSC.tur&&sts[t].filter(x=>x.k=='tur').length<3?'tur':null;if(k)g.build(P[i],k)}
+    let mx=0,my=0,a=p.a,f=0;
+    if(p.hp<35){mx=oc.x-p.x;my=oc.y-p.y;a=Math.atan2(my,mx)}
+    else if(tgt){const dx=tgt.x-p.x,dy=tgt.y-p.y,d=Math.hypot(dx,dy)||1,side=Math.sin(Date.now()/600+i)>0?1:-1,w=d>230?1:d<150?-1:0;
+      mx=dx/d*w+(-dy/d)*side*.9;my=dy/d*w+(dx/d)*side*.9;a=Math.atan2(dy,dx)+(Math.random()-.5)*.14;f=1}
+    else if(role==1&&N==4){mx=oc.x+(t?-150:150)-p.x;my=oc.y+(i%2?70:-70)-p.y;a=t?Math.PI:0}
+    else{const dx=ec.x-p.x,dy=ec.y-p.y,d=Math.hypot(dx,dy);mx=dx;my=dy;a=Math.atan2(dy,dx)+(Math.random()-.5)*.06;if(d<380){f=1;if(d<220){mx=0;my=0}}}
+    const[dx,dy]=steer(p,mx,my,WL,AW,AH);return{dx,dy,a,f}}
   function finish(w){if(over)return;over=1;clearInterval(iv);
     P.forEach((s,i)=>{if(gone[i])return;s.g=null;const win=w<0?2:ps[i].t==w?0:1,gain=win==0?200:win==2?80:30;s.emit('cs:end',{win,g:gain,...award(s,gain,win==0?160:win==2?80:50)})})}
   function snap(){const A=ps.map(p=>[p.x|0,p.y|0,+p.a.toFixed(2),Math.max(0,Math.ceil(p.hp)),p.mv,p.t]),B=bl.map(o=>[o.x|0,o.y|0,o.vx|0,o.vy|0,o.k|0]),S2=sts.flat().map(s=>[s.id,s.k,s.x,s.y,s.t]);
@@ -276,6 +317,7 @@ function CS(P){
     for(let t=0;t<2;t++)tc[t]+=dt*3*ps.filter((p,j)=>p.t==t&&!gone[j]).length;
     ps.forEach((p,i)=>{if(gone[i])return;
       if(p.hp<=0){p.rt-=dt;if(p.rt<=0)spawn(i);return}
+      if(P[i].isBot)inp[i]=botCS(i);
       const n=inp[i];let dx=n.dx,dy=n.dy;const m=Math.hypot(dx,dy);if(m>1){dx/=m;dy/=m}
       p.x=cl(p.x+dx*180*dt,14,AW-14);p.y=cl(p.y+dy*180*dt,14,AH-14);push(p,WL);
       for(const c of cas){const ex=p.x-c.x,ey=p.y-c.y,d=Math.hypot(ex,ey);if(d>0&&d<50){p.x=c.x+ex/d*50;p.y=c.y+ey/d*50}}
